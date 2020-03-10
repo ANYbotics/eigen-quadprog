@@ -1,50 +1,130 @@
-cmake_minimum_required(VERSION 3.1.3)
+# This file is part of eigen-quadprog.
+#
+# eigen-quadprog is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# eigen-quadprog is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with eigen-quadprog.  If not, see <http://www.gnu.org/licenses/>.
+
+cmake_minimum_required(VERSION 3.5.1)
+project(eigen-quadprog)
 
 set(CMAKE_CXX_STANDARD 11)
-set(CXX_DISABLE_WERROR True) # disable -Werror on Unix for now.
+add_compile_options(-Wall -Wextra -Wpedantic)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(PROJECT_NAME eigen-quadprog)
-set(PROJECT_DESCRIPTION "QuadProg QP solver through Eigen3 library.")
-set(PROJECT_URL "https://github.com/jrl-umi3218/eigen-quadprog")
-set(PROJECT_DEBUG_POSTFIX "_d")
-set(PROJECT_VERSION 1.0.1)
-set(PROJECT_USE_CMAKE_EXPORT TRUE)
+enable_language(Fortran)
 
-set(DOXYGEN_USE_MATHJAX "YES")
+find_package(catkin REQUIRED)
+find_package(Eigen3 REQUIRED)
 
-include(cmake/base.cmake)
-include(cmake/msvc-specific.cmake)
+###################################
+## catkin specific configuration ##
+###################################
 
-project(eigen-quadprog C CXX)
+catkin_package(
+  INCLUDE_DIRS
+    include
+    ${EIGEN3_INCLUDE_DIR} # Eigen does not set variables according to the CMake naming convention.
+  LIBRARIES
+    ${PROJECT_NAME}
+)
 
-option(USE_F2C "Use f2c converted code (usually slower)." OFF)
-if(WIN32)
-  set(USE_FORTRAN_SUBDIRECTORY_DEFAULT ON)
-else()
-  set(USE_FORTRAN_SUBDIRECTORY_DEFAULT OFF)
+###########
+## Build ##
+###########
+
+add_library(${PROJECT_NAME}
+  src/QuadProg.cpp
+  src/blas.f
+  src/solve.QP.compact.f
+  src/solve.QP.f
+  src/util.f
+)
+
+add_dependencies(${PROJECT_NAME}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+# target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
+target_include_directories(${PROJECT_NAME}
+  PRIVATE
+  include
+  SYSTEM    # Libraries listed after 'SYSTEM' are marked as external, and don't generate warnings.
+    ${catkin_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIR}
+)
+
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)
+
+#############
+## Install ##
+#############
+
+install(
+  TARGETS
+  ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(
+  DIRECTORY
+  include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
+
+##########
+## Test ##
+##########
+
+if(CATKIN_ENABLE_TESTING)
+  find_package(catkin REQUIRED
+    COMPONENTS
+      ${CATKIN_PACKAGE_DEPENDENCIES}
+  )
+
+  catkin_add_gtest(test_${PROJECT_NAME}
+    test/main.cpp
+    test/QPTest.cpp
+  )
 endif()
-option(USE_FORTRAN_SUBDIRECTORY "Use cmake to generate sub project for fortran parts" ${USE_FORTRAN_SUBDIRECTORY_DEFAULT})
-option(DISABLE_TESTS "Disable unit tests." OFF)
 
-find_package(Eigen3 QUIET NO_CMAKE_PACKAGE_REGISTRY)
-if(Eigen3_FOUND)
-  add_project_dependency(Eigen3 REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
-else()
-  add_project_dependency(Eigen3 MODULE REQUIRED)
+if(TARGET test_${PROJECT_NAME})
+  target_link_libraries(test_${PROJECT_NAME}
+    ${PROJECT_NAME}
+  )
+
+  target_include_directories(test_${PROJECT_NAME} PRIVATE
+    include
+    SYSTEM
+      ${catkin_INCLUDE_DIRS}
+      ${EIGEN3_INCLUDE_DIR}
+  )
+
+  find_package(cmake_code_coverage QUIET)
+  if(cmake_code_coverage_FOUND)
+    add_gtest_coverage(
+      TEST_BUILD_TARGETS test_${PROJECT_NAME}
+    )
+  endif(cmake_code_coverage_FOUND)
 endif()
 
-if(MSVC)
-  if(USE_FORTRAN_SUBDIRECTORY)
-    set(CMAKE_MSVCIDE_RUN_PATH "\$(SolutionDir)/src/\$(Configuration);\$(SolutionDir)/src/quadprog_fortran")
-  else()
-    set(CMAKE_MSVCIDE_RUN_PATH "\$(SolutionDir)/src/\$(Configuration)")
-  endif()
-endif(MSVC)
+###########
+## Clang ##
+###########
 
-#########################
-
-add_subdirectory(src)
-
-if(${BUILD_TESTING})
-  add_subdirectory(tests)
-endif()
+find_package(cmake_clang_tools QUIET)
+if(cmake_clang_tools_FOUND)
+  add_default_clang_tooling()
+endif(cmake_clang_tools_FOUND)

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>eigen-quadprog</name>
+  <version>1.0.1</version>
+  <description>QuadProg QP solver through Eigen3 library.</description>
+  <maintainer email="scaron@anybotics.com">Stéphane Caron</maintainer>
+  <maintainer email="vyuryev@anybotics.com">Valentin Yuryev</maintainer>
+  <license>LGPLv3</license>
+  <url type="website">https://github.com/anybotics/eigen-quadprog</url>
+  <url type="bugtracker">https://github.com/jrl-umi3218/eigen-quadprog/issues</url>
+  <author email="joris.vaillant@gmail.com">Joris Vaillant</author>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>cmake_clang_tools</build_depend>
+  <build_depend>gfortran</build_depend>
+  <build_depend>eigen</build_depend>
+  <test_depend>gtest</test_depend>
+  <test_depend>cmake_code_coverage</test_depend>
+</package>
